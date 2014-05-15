@@ -1,5 +1,6 @@
-#bippy
-##fast and easy BIP0038 encryption for multiple crypto-currencies
+#bippy 
+###fast and easy BIP0038 encryption for multiple crypto-currencies
+#####http://bippy.org
 
 Keeping private keys is inherently unsafe. 
 If a third party has access to your private key, they have access to all of your coins. 
