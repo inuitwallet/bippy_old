@@ -28,12 +28,13 @@ import system.gen as gen
 import system.key as key
 import json
 
-currencyLongNamesList = []
+currencyLongNamesList = ['Bitcoin','Litecoin','Dogecoin','Peercoin','Blackcoin','Vertcoin','----------Currencies below are not currently available at woodwallets.io----------']
 
 with open('currencies.json', 'r') as dataFile:
 	currencies = json.load(dataFile)	
 for cur in currencies:
-	currencyLongNamesList.append(cur['longName'])
+	if cur['longName'] not in currencyLongNamesList:
+		currencyLongNamesList.append(cur['longName'])
 
 class bippyApp(App):
 	"""
@@ -45,6 +46,9 @@ class bippyApp(App):
 			From the currency longName returned by the UI
 			return the Abbreviation understood by the rest of the application
 		"""
+		if value == '----------Currencies below are not currently available at woodwallets.io----------':
+			instance.text = self.selectedCurrencyLongName
+			return
 		for cur in currencies:
 			if cur['longName'] == value:
 				self.selectedCurrency = str(cur['currency'])
