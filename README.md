@@ -10,8 +10,11 @@ A BIP0038 encrypted private key is useless without the passphrase, but with the 
 bippy is a tool for quickly and securely generating BIP0038 encrypted keys for a range of crypto-currencies.
 
 *bippy can generate new private keys or encrypt existing keys.
+
 *bippy has a simple user interface with helpful instructions to make the encryption process easier.
+
 *After encrypting a key, bippy can show you copy and paste-able personalised links to woodwallets.io so that you can keep your BIP0038 encrypted key safe in style.
+
 *bippy does not need an internet connection so private key generation and encryption can be kept secure.
 
 bippy aims to be cross-platform on modern operating system, open source, and free.
@@ -20,12 +23,14 @@ bippy aims to be cross-platform on modern operating system, open source, and fre
 #Libraries used
 
 *kivy (http://kivy.org)
+
 *scrypt (https://pypi.python.org/pypi/scrypt/0.6.1)
+
 *deepcelerons' script was the foundation of inuit which in turn led to bippy (https://bitcointalk.org/index.php?topic=361092.0) 
 
 #Sponsors
 
-<http://woodwallets.io>
+http://woodwallets.io
 
 #Donations
 
