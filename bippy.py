@@ -279,7 +279,7 @@ class bippyApp(App):
 		self.rightBox = BoxLayout(orientation='vertical', size_hint=(.25, 1))
 		
 		#the image goes in the top part
-		self.entropyImage = AsyncImage(source='../etc/woodFORbippy.png', size_hint=(1, .9), allow_stretch=True, keep_ratio=True)
+		self.entropyImage = AsyncImage(source='woodFORbippy.png', size_hint=(1, .9), allow_stretch=True, keep_ratio=True)
 		self.rightBox.add_widget(self.entropyImage)
 		#the progress bar in the bottom
 		self.prog = ProgressBar(max=550, size_hint=(.9,.1), pos_hint={'right':.95})
