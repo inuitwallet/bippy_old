@@ -14,6 +14,11 @@ bippy is a tool for quickly and securely generating BIP0038 encrypted keys for a
    - After encrypting a key, bippy can show you copy and paste-able personalised links to woodwallets.io so that you can keep your BIP0038 encrypted key safe in style.
    - bippy does not need an internet connection so private key generation and encryption can be kept secure.
    - bippy aims to be cross-platform on modern operating system, open source, and free.
+   
+#Running bippy
+
+Ensure that you have kivy installed (or bootstrapped if you are using the portable version on windows. That's all explained at http://kivy.org)
+Open a command prompt / terminal in the bippy directory and type *python bippy.py* 
 
  
 #Libraries used
