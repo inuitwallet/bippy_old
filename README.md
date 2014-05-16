@@ -31,10 +31,6 @@ Open a command prompt / terminal in the bippy directory and type *python bippy.p
 
 http://woodwallets.io
 
-#Donations
-
-
-
 
 #Contributors: 
 
