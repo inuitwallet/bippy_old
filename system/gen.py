@@ -73,3 +73,25 @@ def verifyPassword(password):
 	if len(password) < 7:
 		return False
 	return True
+
+def vanity(currency, string):
+	"""
+		Generate a vanity address
+	"""
+	#using the currencies.json file, get the currency data
+	with open('currencies.json', 'r') as dataFile:
+		currencies = json.load(dataFile)
+	for cur in currencies:
+		if cur['currency'] == currency:
+			break
+	#randomly choose a prefix if multiples exist
+	prefixes = cur['prefix'].split('|')
+	prefix = prefixes[random.randint(0, (len(prefixes)-1))]
+	#generate the private and public keys
+	vanityAddress = ''
+	while vanityAddress[:(len(string)+1)] != prefix + string:
+		privateKey = int(rand.randomKey(random.getrandbits(512)))
+		vanityAddress = address.publicKey2Address(address.privateKey2PublicKey(privateKey), int(cur['version']), prefix, int(cur['length']))
+		print(vanityAddress)
+	print(vanityAddress, privateKey)
+	return

@@ -31,7 +31,6 @@ def entropy(entropy):
 	"""
 	512 bit random number from mouse co-ords and timer
 	"""
-
 	hashes = clockrnd()
 	mouse = 0
 	for coord in entropy:
