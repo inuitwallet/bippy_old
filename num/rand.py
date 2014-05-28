@@ -44,7 +44,7 @@ def randomKey(entropy):
 	256 bit number from equally strong urandom, user entropy, and timer parts
 	"""
 	if entropy.bit_length() < 250:
-		print('Insufficent entropy parameter to generate key')
+		print('Insufficient entropy parameter to generate key')
 		return False
 	from random import SystemRandom
 	osrndi = SystemRandom()
