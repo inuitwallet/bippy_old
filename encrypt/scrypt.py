@@ -9,18 +9,23 @@ from ctypes import (cdll,
                     create_string_buffer)
 
 #Linux
-if 'Linux' in platform.platform():
+if platform.system() == 'Linux':
 	if platform.architecture()[0] == '64bit':
 		_scrypt = cdll.LoadLibrary(imp.find_module('_scrypt_lin_64')[1])
 	else:
 		_scrypt = cdll.LoadLibrary(imp.find_module('_scrypt_lin_x86')[1])
 #Windows
-if 'Windows' in platform.platform():
+if platform.system() == 'Windows':
 	if platform.architecture()[0] == '64bit':
 		_scrypt = cdll.LoadLibrary(imp.find_module('_scrypt_win_64')[1])
 	else:
 		_scrypt = cdll.LoadLibrary(imp.find_module('_scrypt_win_x86')[1])
 #Mac
+if platform.system() == 'Darwin':
+	if platform.architecture()[0] == '64bit':
+		_scrypt = cdll.LoadLibrary(imp.find_module('_scrypt_mac_64')[1])
+	else:
+		_scrypt = cdll.LoadLibrary(imp.find_module('_scrypt_mac_x86')[1])
 
 _scryptenc_buf = _scrypt.exp_scryptenc_buf
 _scryptenc_buf.argtypes = [c_char_p,  # const uint_t  *inbuf
