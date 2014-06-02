@@ -13,7 +13,6 @@ def clockbase():
 
 	return pack('<dddd', clock(), time(), clock(), time()).encode('hex')
 
-
 def clockrnd():
 	"""
 	512 bit int: random delay while hashing data,
