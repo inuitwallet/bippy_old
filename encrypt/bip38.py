@@ -159,7 +159,8 @@ def intermediate2privK(intermediate_passphrase_string):
 	#Turn on bit 0x20 if the Bitcoin address will be formed by hashing the compressed public key (optional, saves space, but many Bitcoin implementations aren't compatible with it)
 	#Turn on bit 0x04 if ownerentropy contains a value for lotsequence.
 	#(While it has no effect on the keypair generation process, the decryption process needs this flag to know how to process ownerentropy)
-	flagbyte = chr(0b01010000)
+	flagbyte = chr(0b00100100) # 00 EC 1 compressed 00 future 1 has lot and sequence 00 future
+	#flagbyte = chr(0b11100000)  # 11 noec 1 compressedpub 00 future 0 ec only 00 future
 
 	#2. Generate 24 random bytes, call this seedb. Take SHA256(SHA256(seedb)) to yield 32 bytes, call this factorb.
 	seedb = os.urandom(24)
@@ -168,22 +169,36 @@ def intermediate2privK(intermediate_passphrase_string):
 	#3. ECMultiply passpoint by factorb.
 	pub = elip.base10_multiply(int(enc.decode(factorb, 256)), int(enc.decode(passpoint, 256)))
 
-	# Use the resulting EC point as a public key and hash it into a Bitcoin address using either compressed or uncompressed public key methodology
+	#4. Use the resulting EC point as a public key and hash it into a Bitcoin address using either compressed or uncompressed public key methodology
 	# (specify which methodology is used inside flagbyte).
 	# This is the generated Bitcoin address, call it generatedaddress.
 	publicKey = ('0' + str(2 + (pub[1] % 2)) + enc.encode(pub[0], 16, 64)).decode('hex')
-	generatedaddress = address.publicKey2Address(publicKey) ## Remember to add in the currency details here
+	generatedaddress = address.publicKey2Address(publicKey.encode('hex')) ## Remember to add in the currency details here
 
-	#Take the first four bytes of SHA256(SHA256(generatedaddress)) and call it addresshash.
+	#5. Take the first four bytes of SHA256(SHA256(generatedaddress)) and call it addresshash.
 	addresshash = hashlib.sha256(hashlib.sha256(generatedaddress).digest()).digest()
 
-	#Now we will encrypt seedb. Derive a second key from passpoint using scrypt
+	#6. Now we will encrypt seedb. Derive a second key from passpoint using scrypt
 	#Parameters: passphrase is passpoint provided from the first party (expressed in binary as 33 bytes).
 	# salt is addresshash + ownerentropy, n=1024, r=1, p=1, length=64. The "+" operator is concatenation.
-	
+	encseedb = scrypt.hash(passpoint, addresshash + ownerentropy, 1024, 1, 1, 64)
 
-	#Split the result into two 32-byte halves and call them derivedhalf1 and derivedhalf2.
-	#Do AES256Encrypt(seedb[0...15] xor derivedhalf1[0...15], derivedhalf2), call the 16-byte result encryptedpart1
-	#Do AES256Encrypt((encryptedpart1[8...15] + seedb[16...23]) xor derivedhalf1[16...31], derivedhalf2), call the 16-byte result encryptedpart2. The "+" operator is concatenation.
-	#The encrypted private key is the Base58Check-encoded concatenation of the following, which totals 39 bytes without Base58 checksum:
+	#7. Split the result into two 32-byte halves and call them derivedhalf1 and derivedhalf2.
+	derivedhalf1 = encseedb[0:32]
+	derivedhalf2 = encseedb[32:64]
+
+	#8. Do AES256Encrypt(seedb[0...15] xor derivedhalf1[0...15], derivedhalf2), call the 16-byte result encryptedpart1
+	Aes = aes.Aes(derivedhalf2)
+	encryptedpart1 = Aes.enc(enc.sxor(seedb[:16], derivedhalf1[:16]))
+
+	#9. Do AES256Encrypt((encryptedpart1[8...15] + seedb[16...23]) xor derivedhalf1[16...31], derivedhalf2), call the 16-byte result encryptedpart2.
+	# The "+" operator is concatenation.
+	encryptedpart2 = Aes.enc(enc.sxor(encryptedpart1[8:16] + seedb[16:24], derivedhalf1[16:32]))
+
+	#10. The encrypted private key is the Base58Check-encoded concatenation of the following, which totals 39 bytes without Base58 checksum:
 	#0x01 0x43 + flagbyte + addresshash + ownerentropy + encryptedpart1[0...7] + encryptedpart2
+	inp_fmtd = '\x01\x43' + flagbyte + addresshash + ownerentropy + encryptedpart1[0:8] + encryptedpart2
+	check = hashlib.sha256(hashlib.sha256(inp_fmtd).digest()).digest()[:4]
+	print(len(inp_fmtd))
+	BIPKey = enc.b58encode(inp_fmtd + check)
+	return BIPKey, generatedaddress
