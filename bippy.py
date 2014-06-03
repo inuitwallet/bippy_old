@@ -28,6 +28,7 @@ import system.gen as gen
 import system.key as key
 import json
 
+
 currencyLongNamesList = ['Bitcoin','Litecoin','Dogecoin','Peercoin','Blackcoin','Vertcoin','----------Currencies below are not currently available at woodwallets.io----------']
 
 with open('currencies.json', 'r') as dataFile:

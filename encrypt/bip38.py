@@ -159,24 +159,23 @@ def intermediate2privK(intermediate_passphrase_string):
 	#Turn on bit 0x20 if the Bitcoin address will be formed by hashing the compressed public key (optional, saves space, but many Bitcoin implementations aren't compatible with it)
 	#Turn on bit 0x04 if ownerentropy contains a value for lotsequence.
 	#(While it has no effect on the keypair generation process, the decryption process needs this flag to know how to process ownerentropy)
-	flagbyte = chr(0b00100100) # 00 EC 1 compressed 00 future 1 has lot and sequence 00 future
-	#flagbyte = chr(0b11100000)  # 11 noec 1 compressedpub 00 future 0 ec only 00 future
+	flagbyte = chr(0b00100100) # 00 EC 1 compressed 00 future 1 has lotsequence 00 future
 
 	#2. Generate 24 random bytes, call this seedb. Take SHA256(SHA256(seedb)) to yield 32 bytes, call this factorb.
 	seedb = os.urandom(24)
 	factorb = hashlib.sha256(hashlib.sha256(seedb).digest()).digest()
 
 	#3. ECMultiply passpoint by factorb.
-	pub = elip.base10_multiply(int(enc.decode(factorb, 256)), int(enc.decode(passpoint, 256)))
+	pub = elip.base10_multiply(enc.decode(factorb, 256), enc.decode(passpoint, 256))
 
 	#4. Use the resulting EC point as a public key and hash it into a Bitcoin address using either compressed or uncompressed public key methodology
 	# (specify which methodology is used inside flagbyte).
 	# This is the generated Bitcoin address, call it generatedaddress.
-	publicKey = ('0' + str(2 + (pub[1] % 2)) + enc.encode(pub[0], 16, 64)).decode('hex')
-	generatedaddress = address.publicKey2Address(publicKey.encode('hex')) ## Remember to add in the currency details here
+	publicKey = ('0' + str(2 + (pub[1] % 2)) + enc.encode(pub[0], 16, 64))
+	generatedaddress = address.publicKey2Address(publicKey) ## Remember to add in the currency details here
 
 	#5. Take the first four bytes of SHA256(SHA256(generatedaddress)) and call it addresshash.
-	addresshash = hashlib.sha256(hashlib.sha256(generatedaddress).digest()).digest()
+	addresshash = hashlib.sha256(hashlib.sha256(generatedaddress).digest()).digest()[:4]
 
 	#6. Now we will encrypt seedb. Derive a second key from passpoint using scrypt
 	#Parameters: passphrase is passpoint provided from the first party (expressed in binary as 33 bytes).
@@ -199,6 +198,90 @@ def intermediate2privK(intermediate_passphrase_string):
 	#0x01 0x43 + flagbyte + addresshash + ownerentropy + encryptedpart1[0...7] + encryptedpart2
 	inp_fmtd = '\x01\x43' + flagbyte + addresshash + ownerentropy + encryptedpart1[0:8] + encryptedpart2
 	check = hashlib.sha256(hashlib.sha256(inp_fmtd).digest()).digest()[:4]
-	print(len(inp_fmtd))
 	BIPKey = enc.b58encode(inp_fmtd + check)
-	return BIPKey, generatedaddress
+	cnfrmcode = confirmationcode(flagbyte, addresshash, ownerentropy, factorb, derivedhalf1, derivedhalf2)
+	return BIPKey, generatedaddress, cnfrmcode
+
+def confirmationcode(flagbyte, addresshash, ownerentropy, factorb, derivedhalf1, derivedhalf2):
+	"""
+	The party generating the Bitcoin address has the option to return a confirmation code back to owner which allows owner
+	to independently verify that he has been given a Bitcoin address that actually depends on his passphrase,
+	and to confirm the lot and sequence numbers (if applicable).
+	This protects owner from being given a Bitcoin address by the second party that is unrelated to the key derivation and possibly spendable by the second party.
+	If a Bitcoin address given to owner can be successfully regenerated through the confirmation process,
+	owner can be reasonably assured that any spending without the passphrase is infeasible.
+	This confirmation code is 75 characters starting with "cfrm38".
+
+	To generate it, we need flagbyte, addresshash, ownerentropy, factorb, derivedhalf1 and derivedhalf2 from the original encryption operation.
+	"""
+	#1. ECMultiply factorb by G, call the result pointb. The result is 33 bytes (compressed key format).
+	pub = elip.base10_multiply(elip.G, enc.decode(factorb, 256))
+	pointb = ('0' + str(2 + (pub[1] % 2)) + enc.encode(pub[0], 16, 64))
+
+	#2. The first byte is 0x02 or 0x03. XOR it by (derivedhalf2[31] & 0x01), call the resulting byte pointbprefix.
+	pointbprefix = enc.sxor(pointb[:1], str(derivedhalf1[31]) + '\x01')
+
+	#3. Do AES256Encrypt(pointb[1...16] xor derivedhalf1[0...15], derivedhalf2) and call the result pointbx1.
+	Aes = aes.Aes(derivedhalf2)
+	pointbx1 = Aes.enc(enc.sxor(pointb[1:17], derivedhalf1[0:16]))
+
+	#4. Do AES256Encrypt(pointb[17...32] xor derivedhalf1[16...31], derivedhalf2) and call the result pointbx2.
+	pointbx2 = Aes.enc(enc.sxor(pointb[17:33], derivedhalf1[16:32]))
+
+	#5. Concatenate pointbprefix + pointbx1 + pointbx2 (total 33 bytes) and call the result encryptedpointb.
+	encryptedpointb = pointbprefix + pointbx1 + pointbx2
+
+	#6. The result is a Base58Check-encoded concatenation of the following:
+	#0x64 0x3B 0xF6 0xA8 0x9A + flagbyte + addresshash + ownerentropy + encryptedpointb
+	inp_fmtd = '\x64\x3B\xF6\xA8\x9A' + flagbyte + addresshash + ownerentropy + encryptedpointb
+	check = hashlib.sha256(hashlib.sha256(inp_fmtd).digest()).digest()[:4]
+	print(encryptedpointb)
+	return enc.b58encode(inp_fmtd + check)
+
+
+def confirmcode(confirmationcode, passphrase):
+	"""
+	A confirmation tool, given a passphrase and a confirmation code, can recalculate the address, verify the address hash, and then assert the following:
+	"It is confirmed that Bitcoin address address depends on this passphrase".
+	If applicable: "The lot number is lotnumber and the sequence number is sequencenumber."
+
+	To recalculate the address:
+	"""
+	#decode the confirmationcode to give addresshash, ownerentropy and encryptedpointb
+	data = enc.encode(enc.decode(confirmationcode,58),256)
+	assert hashlib.sha256(hashlib.sha256(data[:-4]).digest()).digest()[:4] == data[-4:]
+	addresshash = data[6:10]
+	ownerentropy = data[10:18]
+	encryptedpointb = data[18:51]
+	print(encryptedpointb)
+
+	#1. Derive passfactor using scrypt with ownerentropy and the user's passphrase and use it to recompute passpoint
+	prefactor = scrypt.hash(passphrase, ownerentropy[:4], 16384, 8, 8, 32)
+	passfactor = hashlib.sha256(hashlib.sha256(prefactor + ownerentropy).digest()).digest()
+	pub = elip.base10_multiply(elip.G, enc.decode(passfactor, 256))
+	passpoint = ('0' + str(2 + (pub[1] % 2)) + enc.encode(pub[0], 16, 64)).decode('hex')
+
+	#2. Derive decryption key for pointb using scrypt with passpoint, addresshash, and ownerentropy
+
+
+	#3. Decrypt encryptedpointb to yield pointb
+
+	#4. ECMultiply pointb by passfactor. Use the resulting EC point as a public key and hash it into address using either compressed or uncompressed public key methodology as specifid in flagbyte.
+
+
+
+
+
+
+	#Decryption
+	#
+	#Collect encrypted private key and passphrase from user.
+	#Derive passfactor using scrypt with ownerentropy and the user's passphrase and use it to recompute passpoint
+	#Derive decryption key for seedb using scrypt with passpoint, addresshash, and ownersalt
+	#Decrypt encryptedpart2 using AES256Decrypt to yield the last 8 bytes of seedb and the last 8 bytes of encryptedpart1.
+	#Decrypt encryptedpart1 to yield the remainder of seedb.
+	#Use seedb to compute factorb.
+	#Multiply passfactor by factorb mod N to yield the private key associated with generatedaddress.
+	#Convert that private key into a Bitcoin address, honoring the compression preference specified in the encrypted key.
+	#Hash the Bitcoin address, and verify that addresshash from the encrypted private key record matches the hash. If not, report that the passphrase entry was incorrect.
+#
