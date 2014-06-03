@@ -62,9 +62,9 @@ def decrypt(encrypted_privkey, passphrase, p):
 	derivedhalf2 = key[32:64]
 	encryptedhalf1 = d[0:16]
 	encryptedhalf2 = d[16:32]
-	Aes = aes.Aes(derivedhalf2)
 	
 	#4. Decrypt encryptedpart2 using AES256Decrypt to yield the last 8 bytes of seedb and the last 8 bytes of encryptedpart1.
+	Aes = aes.Aes(derivedhalf2)
 	decryptedhalf2 = Aes.dec(encryptedhalf2)
 	
 	#5. Decrypt encryptedpart1 to yield the remainder of seedb.
@@ -217,6 +217,7 @@ def confirmationcode(flagbyte, addresshash, ownerentropy, factorb, derivedhalf1,
 	#1. ECMultiply factorb by G, call the result pointb. The result is 33 bytes (compressed key format).
 	pub = elip.base10_multiply(elip.G, enc.decode(factorb, 256))
 	pointb = ('0' + str(2 + (pub[1] % 2)) + enc.encode(pub[0], 16, 64))
+	print('pointb = ' + pointb)
 
 	#2. The first byte is 0x02 or 0x03. XOR it by (derivedhalf2[31] & 0x01), call the resulting byte pointbprefix.
 	pointbprefix = enc.sxor(pointb[:1], str(derivedhalf1[31]) + '\x01')
@@ -235,9 +236,7 @@ def confirmationcode(flagbyte, addresshash, ownerentropy, factorb, derivedhalf1,
 	#0x64 0x3B 0xF6 0xA8 0x9A + flagbyte + addresshash + ownerentropy + encryptedpointb
 	inp_fmtd = '\x64\x3B\xF6\xA8\x9A' + flagbyte + addresshash + ownerentropy + encryptedpointb
 	check = hashlib.sha256(hashlib.sha256(inp_fmtd).digest()).digest()[:4]
-	print(encryptedpointb)
 	return enc.b58encode(inp_fmtd + check)
-
 
 def confirmcode(confirmationcode, passphrase):
 	"""
@@ -253,7 +252,9 @@ def confirmcode(confirmationcode, passphrase):
 	addresshash = data[6:10]
 	ownerentropy = data[10:18]
 	encryptedpointb = data[18:51]
-	print(encryptedpointb)
+	pointbprefix = encryptedpointb[:1]
+	pointbx1 = encryptedpointb[1:17]
+	pointbx2 = encryptedpointb[17:]
 
 	#1. Derive passfactor using scrypt with ownerentropy and the user's passphrase and use it to recompute passpoint
 	prefactor = scrypt.hash(passphrase, ownerentropy[:4], 16384, 8, 8, 32)
@@ -262,11 +263,25 @@ def confirmcode(confirmationcode, passphrase):
 	passpoint = ('0' + str(2 + (pub[1] % 2)) + enc.encode(pub[0], 16, 64)).decode('hex')
 
 	#2. Derive decryption key for pointb using scrypt with passpoint, addresshash, and ownerentropy
-
+	key = scrypt.hash(passpoint, addresshash + ownerentropy, 1024, 1, 1, 64)
+	derivedhalf1 = key[0:32]
+	derivedhalf2 = key[32:64]
 
 	#3. Decrypt encryptedpointb to yield pointb
+	Aes = aes.Aes(derivedhalf2)
+	pointb = pointbprefix + Aes.dec(pointbx1) + Aes.dec(pointbx2)
+	print('pointb = ' + pointb.encode('hex'))
 
-	#4. ECMultiply pointb by passfactor. Use the resulting EC point as a public key and hash it into address using either compressed or uncompressed public key methodology as specifid in flagbyte.
+	#4. ECMultiply pointb by passfactor. Use the resulting EC point as a public key and hash it into address using either compressed or uncompressed public key
+	# methodology as specifid in flagbyte.
+	pub = elip.base10_multiply(enc.decode(passfactor, 256), enc.decode(pointb, 256))
+	privK = ('0' + str(2 + (pub[1] % 2)) + enc.encode(pub[0], 16, 64))
+	generatedaddress = address.publicKey2Address(privK)
+	#print(generatedaddress)
+	#print(hashlib.sha256(hashlib.sha256(generatedaddress).digest()).digest()[:4])
+	#print(addresshash)
+	#assert hashlib.sha256(hashlib.sha256(generatedaddress).digest()).digest()[:4] == addresshash
+	return
 
 
 

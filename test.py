@@ -8,4 +8,4 @@ print('BIP Key = ' + BIPKey)
 print('Address = ' + address)
 print('Confirmation Code = ' + confirmationcode)
 
-#output = bip38.confirmcode(confirmationcode, 'thisisatest')
+output = bip38.confirmcode(confirmationcode, 'thisisatest')
