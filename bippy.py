@@ -30,6 +30,7 @@ import json
 
 import encrypt.electrum as electrum
 
+
 currencyLongNamesList = ['Bitcoin','Litecoin','Dogecoin','Peercoin','Blackcoin','Vertcoin','----------Currencies below are not currently available at woodwallets.io----------']
 
 with open('currencies.json', 'r') as dataFile:

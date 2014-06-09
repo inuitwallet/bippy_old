@@ -20,6 +20,8 @@ def inv(a, n):
 
 
 def isinf(p):
+	if type(p) is long:
+		p = str(p)
 	return p[0] == 0 and p[1] == 0
 
 
@@ -28,24 +30,30 @@ def base10_add(a, b):
 		return b[0], b[1]
 	if isinf(b):
 		return a[0], a[1]
+	if type(a) is long:
+		a = str(a)
+	if type(b) is long:
+		b = str(b)
 	if a[0] == b[0]:
 		if a[1] == b[1]:
-			return base10_double((a[0], a[1]))
+			return base10_double((int(a[0]), int(a[1])))
 		else:
 			return 0, 0
-	m = ((b[1] - a[1]) * inv(b[0] - a[0], P)) % P
-	x = (m * m - a[0] - b[0]) % P
-	y = (m * (a[0] - x) - a[1]) % P
+	m = ((int(b[1]) - int(a[1])) * inv(int(b[0]) - int(a[0]), P)) % P
+	x = (m * m - int(a[0]) - int(b[0])) % P
+	y = (m * (int(a[0]) - x) - int(a[1])) % P
 	return x, y
 
 
 def base10_double(a):
 	if isinf(a):
 		return 0, 0
-	m = ((3 * a[0] * a[0] + A) * inv(2 * a[1], P)) % P
-	x = (m * m - 2 * a[0]) % P
-	y = (m * (a[0] - x) - a[1]) % P
-	return x, y
+	if type(a) is long:
+		a = str(a)
+	m = ((3 * int(a[0]) * int(a[0]) + A) * inv(2 * int(a[1]), P)) % P
+	x = (m * m - 2 * int(a[0])) % P
+	y = (m * (int(a[0]) - x) - int(a[1])) % P
+	return int(x), int(y)
 
 
 def base10_multiply(a, n):
