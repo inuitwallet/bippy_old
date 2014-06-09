@@ -67,7 +67,7 @@ def decrypt(encSeed, passphrase):
 
 	#5. encode the two halves to retrieve the list of mnemonic words
 	seed = half1 + half2
-	mn = mn_encode(seed)
+	mn = mn_encode(str(seed))
 
 	#6. check the salt against the returned string
 	if salt != hashlib.sha256(hashlib.sha256(seed).digest()).digest()[:4]:

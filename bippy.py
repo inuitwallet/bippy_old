@@ -458,7 +458,6 @@ class bippyApp(App):
 		#add the rightbox to the root widget
 		self.root.add_widget(self.rightBox)
 
-		print(electrum.buildRandom())
 		return self.root
 
 if __name__ == '__main__':
