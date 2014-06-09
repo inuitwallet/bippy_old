@@ -3,9 +3,9 @@ import math
 import hashlib
 
 def sxor(s1, s2):
-	""" XOR strings
-	"""
-	return ''.join(chr(ord(a) ^ ord(b)) for a, b in zip(s1, s2))
+    """ XOR strings
+    """
+    return ''.join(chr(ord(a) ^ ord(b)) for a, b in zip(s1, s2))
 
 __b58chars = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'
 __b58base = len(__b58chars)
@@ -60,97 +60,97 @@ def b58decode(v, length=None):
     return None
 
   return result
-	
-	
+
+
 def get_code_string(base):
-	if base == 10:
-		return "0123456789"
-	elif base == 16:
-		return "0123456789abcdef"
-	elif base == 58:
-		return "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
-	elif base == 256:
-		return ''.join([chr(x) for x in range(256)])
-	else:
-		raise ValueError("Invalid base!")
+    if base == 10:
+        return "0123456789"
+    elif base == 16:
+        return "0123456789abcdef"
+    elif base == 58:
+        return "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
+    elif base == 256:
+        return ''.join([chr(x) for x in range(256)])
+    else:
+        raise ValueError("Invalid base!")
 
 
 def encode(val, base, minlen=0):
-	code_string = get_code_string(base)
-	result = ""
-	val = int(val)
-	while val > 0:
-		result = code_string[val % base] + result
-		val /= base
-	if len(result) < minlen:
-		result = code_string[0] * (int(minlen) - len(result)) + result
-	return result
+    code_string = get_code_string(base)
+    result = ""
+    val = int(val)
+    while val > 0:
+        result = code_string[val % base] + result
+        val /= base
+    if len(result) < minlen:
+        result = code_string[0] * (int(minlen) - len(result)) + result
+    return result
 
 
 def decode(string, base):
-	code_string = get_code_string(base)
-	result = 0
-	if base == 16:
-		string = string.lower()
-	while len(string) > 0:
-		result *= base
-		result += code_string.find(string[0])
-		string = string[1:]
-	return result
+    code_string = get_code_string(base)
+    result = 0
+    if base == 16:
+        string = string.lower()
+    while len(string) > 0:
+        result *= base
+        result += code_string.find(string[0])
+        string = string[1:]
+    return result
 
-	
+
 def privKeyVersion(privK, cur):
-	"""
-		determine what sort of private key we have
-		convert it to raw (base 10) and return
+    """
+        determine what sort of private key we have
+        convert it to raw (base 10) and return
 
-		from bitaddress:
+        from bitaddress:
 
-		>> base58 decode input
-		var bytes = Bitcoin.Base58.decode(privStr);
-		>> set hash to be the first 34 characters of the bytes string array
-		var hash = bytes.slice(0, 34);
-		>>
-		var checksum = Crypto.SHA256(Crypto.SHA256(hash, { asBytes: true }), { asBytes: true });
-		if (checksum[0] != bytes[34] ||
-					checksum[1] != bytes[35] ||
-					checksum[2] != bytes[36] ||
-					checksum[3] != bytes[37]) {
-			throw "Checksum validation failed!";
-		}
-		var version = hash.shift();
-		if (version != ECKey.privateKeyPrefix) {
-			throw "Version " + version + " not supported!";
-		}
-		hash.pop();
-		return hash;
+        >> base58 decode input
+        var bytes = Bitcoin.Base58.decode(privStr);
+        >> set hash to be the first 34 characters of the bytes string array
+        var hash = bytes.slice(0, 34);
+        >>
+        var checksum = Crypto.SHA256(Crypto.SHA256(hash, { asBytes: true }), { asBytes: true });
+        if (checksum[0] != bytes[34] ||
+                    checksum[1] != bytes[35] ||
+                    checksum[2] != bytes[36] ||
+                    checksum[3] != bytes[37]) {
+            throw "Checksum validation failed!";
+        }
+        var version = hash.shift();
+        if (version != ECKey.privateKeyPrefix) {
+            throw "Version " + version + " not supported!";
+        }
+        hash.pop();
+        return hash;
 
-		BigInteger.fromByteArrayUnsigned = function (ba) {
-		if (!ba.length) {
-			return ba.valueOf(0);
-		} else if (ba[0] & 0x80) {
-			// Prepend a zero so the BigInteger class doesn't mistake this
-			// for a negative integer.
-			return new BigInteger([0].concat(ba));
-		} else {
-			return new BigInteger(ba);
-		}
-	};
+        BigInteger.fromByteArrayUnsigned = function (ba) {
+        if (!ba.length) {
+            return ba.valueOf(0);
+        } else if (ba[0] & 0x80) {
+            // Prepend a zero so the BigInteger class doesn't mistake this
+            // for a negative integer.
+            return new BigInteger([0].concat(ba));
+        } else {
+            return new BigInteger(ba);
+        }
+    };
 
-	"""
-	if key.isWif(privK, cur):
-		bytes = b58decode(privK)
-		byteshash = bytes[:34]
-		checksum = hashlib.sha256(hashlib.sha256(byteshash).digest()).digest()
-		if checksum[0] != bytes[34] or	checksum[1] != bytes[35] or checksum[2] != bytes[36] or checksum[3] != bytes[37]:
-			print('bad checksum')
-			return False
-		privK = decode(str(encode(int(decode(byteshash[:-1], 256)), 16)[2:]), 16)
-	elif key.isHex(privK):
-		privK = decode(privK, 16)
-	elif key.isB64(privK):
-		privK = privK.decode('base64', 'strict')
-	elif key.isB6(privK):
-		privK = privK.decode('base6', 'strict')
-	return privK
-		
+    """
+    if key.isWif(privK, cur):
+        bytes = b58decode(privK)
+        byteshash = bytes[:34]
+        checksum = hashlib.sha256(hashlib.sha256(byteshash).digest()).digest()
+        if checksum[0] != bytes[34] or	checksum[1] != bytes[35] or checksum[2] != bytes[36] or checksum[3] != bytes[37]:
+            print('bad checksum')
+            return False
+        privK = decode(str(encode(int(decode(byteshash[:-1], 256)), 16)[2:]), 16)
+    elif key.isHex(privK):
+        privK = decode(privK, 16)
+    elif key.isB64(privK):
+        privK = privK.decode('base64', 'strict')
+    elif key.isB6(privK):
+        privK = privK.decode('base6', 'strict')
+    return privK
+

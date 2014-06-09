@@ -41,3 +41,16 @@ def isBase6(key):
 		return True
 	else:
 		return False
+
+def isElectrumSeed(key):
+	key = key.split()
+	if len(key) == 12:
+		return True
+	else:
+		return False#
+
+def isEncElectrumSeed(key):
+	if re.search('^SeedE[123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz]{55}$', key):
+		return True
+	else:
+		return False

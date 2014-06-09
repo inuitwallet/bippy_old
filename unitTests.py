@@ -1,6 +1,7 @@
 import system.gen as gen
 import random
 import json
+import encrypt.electrum as electrum
 
 def End2End(cur):
 	"""
@@ -63,6 +64,19 @@ def encryptKnown(cur):
 		return False
 	return True
 
+def electrumTest():
+	"""
+		Generate a random Electrum seeds and then encrypt and decrypt them
+	"""
+	seed = electrum.buildRandom()
+	print(seed)
+	enc = electrum.encrypt(seed, 's4mm0th')
+	dec = electrum.decrypt(enc, 's4mm0th')
+	if seed != dec:
+		print('The decrypted seed doesn\'t match the original')
+		return False
+	return True
+
 
 
 if __name__ == '__main__':
@@ -82,7 +96,7 @@ if __name__ == '__main__':
 	print('The first test will generate 3 random private keys for each currency.')
 	print('Each key will be BIP38 encrypted and then decrypted.')
 	print('The results will be checked for consistency.')
-	cont = raw_input('Do you want to continue? (y) :')
+	cont = raw_input('Do you want to continue? (y) : ')
 
 	if cont != 'n':
 		#run end to end test
@@ -100,13 +114,25 @@ if __name__ == '__main__':
 	print('The next test will use a list of known private key and address details.')
 	print('These details were all exported from the currencies default QT wallet.')
 	print('The test will BIP38 encrypt and decrypt the known keys and then check for consistency.')
-	cont = raw_input('Do you want to continue? (y) :')
+	cont = raw_input('Do you want to continue? (y) : ')
 
 	if cont != 'n':
 		#run the knownKey test
 		for cur in currencies:
 			print(cur['longName'])
 			if encryptKnown(cur['currency']) is False:
+				failCount += 1
+			else:
+				goodCount += 1
+
+	print('The next test will use generate 50 random Electrum seeds.')
+	print('These will be encrypted and then decrypted to test for consistency.')
+	cont = raw_input('Do you want to continue? (y) : ')
+
+	if cont != 'n':
+		#run the Electrum test
+		for x in xrange(0,50):
+			if electrumTest() is False:
 				failCount += 1
 			else:
 				goodCount += 1

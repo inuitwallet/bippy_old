@@ -28,6 +28,8 @@ import system.gen as gen
 import system.key as key
 import json
 
+import encrypt.electrum as electrum
+
 currencyLongNamesList = ['Bitcoin','Litecoin','Dogecoin','Peercoin','Blackcoin','Vertcoin','----------Currencies below are not currently available at woodwallets.io----------']
 
 with open('currencies.json', 'r') as dataFile:
@@ -54,13 +56,13 @@ class bippyApp(App):
 				self.selectedCurrency = str(cur['currency'])
 				self.selectedCurrencyLongName = str(cur['longName'])
 				return
-					
+
 	def checkPrivK(self, instance, value=False):
 		"""
 			Perform various checks on the private key data and act accordingly
 			This is called whenever the Private Key entry box looses focus
 		"""
-		
+
 		if value:
 			return
 		testKey = instance.text
@@ -69,29 +71,45 @@ class bippyApp(App):
 		self.prog.value = 0
 		self.entropyImage.canvas.remove_group('ellipses')
 
+		#Test if it is an electrum seed
+		if key.isElectrumSeed(testKey):
+			self.MainLabel.text = 'It looks like you entered an Electrum seed.\n\nEnter a Passphrase to encrypt it.'
+			self.PrivKLabel.text = 'Electrum Seed'
+			self.PassLabel.text = 'Enter\nPassphrase'
+			return
+
+		#Test if it is an encrypted electrum Seed
+		if key.isEncElectrumSeed(testKey):
+			self.MainLabel.text = 'It looks like you\'ve entered an encrypted Electrum Seed.\n\nEnter your Passphrase to decrypt it.'
+			self.PrivKLabel.text = 'Encrypted\nElectrum Seed'
+			self.PassLabel.text = 'Enter Passphrase'
+			return
+
 		#Test if its a BIP encrypted Key
 		if key.isBip(testKey, self.selectedCurrency):
-			self.MainLabel.text = 'It looks like you entered a BIP0038 encrypted Private Key.\n\nEnter your Passphrase to decrypt it'
+			self.MainLabel.text = 'It looks like you entered a BIP0038 encrypted Private Key.\n\nEnter your Passphrase to decrypt it.'
 			self.PrivKLabel.text = 'Encrypted Key'
 			self.PassLabel.text = 'Encryption\nPassphrase'
+			return
 
 		#Test if it's a Private key
-		elif key.isWif(testKey, self.selectedCurrency) or key.isHex(testKey) or key.isBase64(testKey) or key.isBase6(testKey):
-			self.MainLabel.text = 'You\'ve entered a Private Key.\n\nEnter a Passphrase to encrypt it'
+		if key.isWif(testKey, self.selectedCurrency) or key.isHex(testKey) or key.isBase64(testKey) or key.isBase6(testKey):
+			self.MainLabel.text = 'You\'ve entered a Private Key.\n\nEnter a Passphrase to encrypt it.'
 			self.PrivKLabel.text = 'Private Key'
 			self.PassLabel.text = 'Enter\nPassphrase'
-								
+			return
+
 		#reset to standard if the box is empty
-		elif testKey == '':
+		if testKey == '':
 			self.MainLabel.text = '[b]Welcome to bippy[/b]\n\nTo get started choose a currency and enter an encryption passphrase.\n\nIf you already have a private key you would like to encrypt or decrypt,\n\nenter it in the \'Private Key\' box below'
 			self.PrivKLabel.text = 'Private Key\n(optional)'
 			self.PassLabel.text = 'Passphrase'
+			return
 
 		#otherwise let the user know that they haven't entered a recognised Private Key
-		else:
-			self.MainLabel.text = 'bippy can\'t recognise what you entered as a private key.\n\nAcceptable formats are:\nCompressed WIF, HEX, Base64, Base6, BIP Encrypted'
-			self.PrivKLabel.text = 'Private Key\n(optional)'
-			self.PassLabel.text = 'Passphrase'
+		self.MainLabel.text = 'bippy can\'t recognise what you entered as a private key.\n\nAcceptable formats are:\nCompressed WIF, HEX, Base64, Base6, BIP Encrypted'
+		self.PrivKLabel.text = 'Private Key\n(optional)'
+		self.PassLabel.text = 'Passphrase'
 		return
 
 	def checkPassword(self, instance, value=False):
@@ -101,7 +119,7 @@ class bippyApp(App):
 		"""
 		if value:
 			return
-		
+
 		self.Password = instance.text
 
 		if gen.verifyPassword(self.Password) is False:
@@ -111,16 +129,30 @@ class bippyApp(App):
 			self.entropyImage.canvas.remove_group('ellipses')
 			return
 		#need to have some sort of password length and complexity check here
-		
+
 		self.PrivateKey = self.PrivK.text
-		
+
 		#it could be a BIP key in which case we show the Decrypt button
 		if key.isBip(self.PrivateKey, self.selectedCurrency):
 			self.MainLabel.text = 'Hit the \'Decrypt\' button to start the decryption.'
 			self.rightBox.remove_widget(self.prog)
 			self.rightBox.add_widget(self.decButton)
 			return
-		
+
+		#It could be an Electrum Seed in which case we show the Electrum encrypt button
+		if key.isElectrumSeed(self.PrivateKey):
+			self.MainLabel.text = 'Hit the \'Encrypt\' button to start the encryption of your Electrum Seed'
+			self.rightBox.remove_widget(self.prog)
+			self.rightBox.add_widget(self.encElectrumButton)
+			return
+
+		#It could be an encrypted Electrum seed in which case weshow the Electrum Decrypt button
+		if key.isEncElectrumSeed(self.PrivateKey):
+			self.MainLabel.text = 'Hit the \'Decrypt\' button to decrypt your Electrum Seed'
+			self.rightBox.remove_widget(self.prog)
+			self.rightBox.add_widget(self.decElectrumButton)
+			return
+
 		#otherwise check that the entry isn't a WIF, HEX B64 or B6 key
 		#if there is no valid privatekey we ask for entropy to be entered
 		#This then generates a new key pair
@@ -131,13 +163,13 @@ class bippyApp(App):
 			self.entropy = []
 			self.entropyImage.bind(on_touch_move=self.draw)
 			return
-				
+
 		#otherwise there is a user supplied private key so we offer to generate a BIP key
 		self.MainLabel.text = 'Hit the \'Encrypt\' button to start the encryption of your private key'
 		self.rightBox.remove_widget(self.prog)
 		self.rightBox.add_widget(self.encButton)
 		return
-			
+
 	def draw(self, instance, value):
 		"""
 			This function is enabled when only a password has been entered.
@@ -169,7 +201,7 @@ class bippyApp(App):
 		#use clock to delay the start of the encryption otherwise the message above is never shown
 		Clock.schedule_once(self.genBIP, 0.5)
 		return
-	
+
 	def genBIP(self, dt):
 		"""
 			This is the second part of the generate BIP method.
@@ -215,7 +247,7 @@ class bippyApp(App):
 		self.rightBox.remove_widget(self.decButton)
 		self.rightBox.add_widget(self.resetButton)
 		return
-			
+
 	def setBIP(self, BIP, Address):
 		"""
 			This method updates the UI with the output of encryption
@@ -230,7 +262,7 @@ class bippyApp(App):
 		self.DoubleLink.text = 'https://woodwallets.io/product/woodwallet-private-key-and-public-address?dbl_addr=' + Address + '&dbl_pvtkey=' + BIP + '&dbl_coin=' + self.selectedCurrency + '&orig=bippy'
 		self.PrivateLink.text = 'https://woodwallets.io/product/one-side-private-key-only?pvt_pvtkey=' + BIP + '&pvt_coin=' + self.selectedCurrency + '&orig=bippy'
 		self.PublicLink.text = 'https://woodwallets.io/product/woodwallet-public-address?pub_addr=' + Address + '&pub_coin=' + self.selectedCurrency + '&orig=bippy'
-		
+
 		self.PasswordEnter.password = False
 		self.PrivK.text = BIP
 		self.PasswordEnter.text = Address
@@ -241,7 +273,7 @@ class bippyApp(App):
 		self.rightBox.remove_widget(self.encButton)
 		self.rightBox.add_widget(self.resetButton)
 		return
-		
+
 	def resetUI(self, instance, value=False):
 		"""
 			This is called when the reset button is pressed.
@@ -267,6 +299,70 @@ class bippyApp(App):
 		self.rightBox.add_widget(self.prog)
 		return
 
+	def encryptElectrum(self, instance, value=False):
+		"""
+			Encrypt the Electrum Seed
+		"""
+		self.MainLabel.text='Starting Encryption of Electrum Seed'
+		#use clock to delay the start of the encryption otherwise the message above is never shown
+		self.PrivK.text = ''
+		Clock.schedule_once(self.encElectrum, 0.5)
+		return
+
+	def encElectrum(self, dt):
+		"""
+			Begin encryption of the supplied Electrum Seed
+		"""
+		encryptedSeed = electrum.encrypt(self.PrivateKey, self.Password)
+		self.MainLabel.text = 'Encryption was successful.\n\nSee below for your encrypted seed'
+		self.PrivKLabel.text = 'Encrypted\nElectrum Seed'
+		self.PassLabel.text = ''
+		self.PrivK.text = encryptedSeed
+		self.PasswordEnter.text = ''
+		#unbind the private key and password entry boxes so that the user can copy out the key and address
+		self.PrivK.unbind(focus=self.checkPrivK)
+		self.PasswordEnter.unbind(focus=self.checkPassword)
+		self.rightBox.remove_widget(self.prog)
+		self.rightBox.remove_widget(self.encElectrumButton)
+		self.rightBox.add_widget(self.resetButton)
+		return
+
+	def decryptElectrum(self, instance, value=False):
+		"""
+			Start the decryption of the Electrum Seed
+		"""
+		self.MainLabel.text='Starting the Decryption of your Electrum seed'
+		#use clock to delay the start of the decryption otherwise the message above is never shown
+		self.PrivK.text = ''
+		self.PasswordEnter.text = ''
+		Clock.schedule_once(self.decElectrum, 0.5)
+		return
+
+	def decElectrum(self, dt):
+		"""
+			Perform the actual decryption of the Electrum Seed
+		"""
+		decryptedSeed = electrum.decrypt(self.PrivateKey, self.Password)
+		if decryptedSeed is False:
+			self.MainLabel.text = 'Decryption was not successful.\n\nAre you sure you entered the correct passphrase?\n\nReset to try again'
+			self.rightBox.remove_widget(self.prog)
+			self.rightBox.remove_widget(self.decElectrumButton)
+			self.rightBox.add_widget(self.resetButton)
+			return
+		self.MainLabel.text = 'Decryption was successful.\n\nSee below for your Electrum Seed.'
+		self.PrivKLabel.text = 'Decrypted\nElectrum Seed'
+		self.PassLabel.text = ''
+		self.PasswordEnter.password = False
+		self.PrivK.text = decryptedSeed
+		self.PasswordEnter.text = ''
+		#unbind the private key and password entry boxes so that the user can copy out the key and address
+		self.PrivK.unbind(focus=self.checkPrivK)
+		self.PasswordEnter.unbind(focus=self.checkPassword)
+		self.rightBox.remove_widget(self.prog)
+		self.rightBox.remove_widget(self.decElectrumButton)
+		self.rightBox.add_widget(self.resetButton)
+		return
+
 	def build(self):
 		"""
 			Build the UI
@@ -277,7 +373,7 @@ class bippyApp(App):
 
 		#the right box has another BoxLayout.
 		self.rightBox = BoxLayout(orientation='vertical', size_hint=(.25, 1))
-		
+
 		#the image goes in the top part
 		self.entropyImage = AsyncImage(source='woodFORbippy.png', size_hint=(1, .9), allow_stretch=True, keep_ratio=True)
 		self.rightBox.add_widget(self.entropyImage)
@@ -286,17 +382,22 @@ class bippyApp(App):
 		self.rightBox.add_widget(self.prog)
 		#the encrypt button.
 		#this isn't added to the UI until Entropy has been collected
+		#the first version is for BIP 38 keys. The second is for Electrum Seeds
 		self.encButton = Button(text='Encrypt', size_hint=(.9,.1), pos_hint={'right':.95})
 		self.encButton.bind(on_press=self.generateBIP)
-		#the encrypt button.
+		self.encElectrumButton = Button(text='Encrypt', size_hint=(.9,.1), pos_hint={'right':.95})
+		self.encElectrumButton.bind(on_press=self.encryptElectrum)
+		#the decrypt button.
 		#this isn't added to the UI until decryption possibilities have been noticed
 		self.decButton = Button(text='Decrypt', size_hint=(.9,.1), pos_hint={'right':.95})
 		self.decButton.bind(on_press=self.decryptBIP)
+		self.decElectrumButton = Button(text='Decrypt', size_hint=(.9,.1), pos_hint={'right':.95})
+		self.decElectrumButton.bind(on_press=self.decryptElectrum)
 		#the reset button.
 		#this isn't added to the UI until Encryption has taken place
 		self.resetButton = Button(text='Reset', size_hint=(.9,.1), pos_hint={'right':.95})
 		self.resetButton.bind(on_press=self.resetUI)
-		
+
 		#within the left hand box we split into a vertical box layout
 		self.leftBox = BoxLayout(orientation='vertical', size_hint=(.7,1))
 
@@ -348,13 +449,15 @@ class bippyApp(App):
 		self.PasswordEnter = TextInput(size_hint_y=None, height=30, multiline=False, password=True)
 		self.PasswordEnter.bind(focus=self.checkPassword)
 		self.entryPane.add_widget(self.PasswordEnter)
-		
+
 		#add the entry pane to the left box
 		self.leftBox.add_widget(self.entryPane)
-		#add the left box to the root widget	
+		#add the left box to the root widget
 		self.root.add_widget(self.leftBox)
 		#add the rightbox to the root widget
 		self.root.add_widget(self.rightBox)
+
+		print(electrum.buildRandom())
 		return self.root
 
 if __name__ == '__main__':
