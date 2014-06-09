@@ -65,13 +65,13 @@ def decrypt(encSeed, passphrase):
 	half1 = enc.sxor(decryptedhalf1, derivedhalf1[:16])
 	half2 = enc.sxor(decryptedhalf2, derivedhalf1[16:32])
 
-	#5. encode the two halves to retrieve the list of mnemonic words
+	#5. build the seed and check it against the check hash
 	seed = half1 + half2
-	mn = mn_encode(str(seed))
-
-	#6. check the salt against the returned string
 	if salt != hashlib.sha256(hashlib.sha256(seed).digest()).digest()[:4]:
 		return False
+
+	#6. encode the seed as an Electrum Mnemonic list
+	mn = mn_encode(str(seed))
 
 	#6 . return the mnemonic as a single string
 	seed = ''
