@@ -30,7 +30,8 @@ def encrypt(seed, passphrase):
 	encryptedhalf2 = Aes.enc(enc.sxor(seed[int(math.floor(len(seed)/2)):len(seed)], derivedhalf1[16:32]))
 
 	#7. The encrypted private key is the Base58Check-encoded concatenation of the following
-	# \xwhatever + salt + encryptedhalf1 + encryptedhalf2
+	# \x4E\xE3\x13\x35 + salt + encryptedhalf1 + encryptedhalf2
+	# (\x4E\xE3\x13\x35) gives the 'SeedE' prefix)
 	encSeed = '\x4E\xE3\x13\x35' + salt + encryptedhalf1 + encryptedhalf2
 	check = hashlib.sha256(hashlib.sha256(encSeed).digest()).digest()[:4]
 	return enc.b58encode(encSeed + check)
@@ -79,6 +80,18 @@ def decrypt(encSeed, passphrase):
 		seed += word + ' '
 	return seed
 
+def buildRandom():
+	"""
+		Generate a 12 word mnemonic for unit tests
+	"""
+	import random
+	outWords = ''
+	for i in xrange(0,12):
+		word = words[random.randint(0,(len(words)-1))]
+		outWords += word + ' '
+	return outWords
+
+
 #!/usr/bin/env python
 #
 # Electrum - lightweight Bitcoin client
@@ -96,14 +109,6 @@ def decrypt(encSeed, passphrase):
 #
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
-
-def buildRandom():
-	import random
-	outWords = ''
-	for i in xrange(0,12):
-		word = words[random.randint(0,(len(words)-1))]
-		outWords += word + ' '
-	return outWords
 
 # list of words from http://en.wiktionary.org/wiki/Wiktionary:Frequency_lists/Contemporary_poetry
 
