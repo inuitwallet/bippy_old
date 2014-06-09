@@ -70,8 +70,8 @@ def electrumTest():
 	"""
 	seed = electrum.buildRandom()
 	print(seed)
-	enc = electrum.encrypt(seed, 's4mm0th')
-	dec = electrum.decrypt(enc, 's4mm0th')
+	enc = electrum.encrypt(seed, 'thisisatest')
+	dec = electrum.decrypt(enc, 'thisisatest')
 	if seed != dec:
 		print('The decrypted seed doesn\'t match the original')
 		return False
